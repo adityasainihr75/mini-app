@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Secure Link Redirect</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+</head>
+<body>
+  <h2 id="error"></h2>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", async () => {
+      const webApp = window.Telegram.WebApp;
+      webApp.ready();
+      
+      const userAgent = navigator.userAgent || navigator.vendor || window.opera;
+
+      // Check if Telegram data is available
+      if (!Telegram.WebApp.initDataUnsafe || !Telegram.WebApp.initDataUnsafe.user) {
+        document.getElementById("error").innerText = "Telegram data not available.";
+        return;
+      }
+
+      const user = Telegram.WebApp.initDataUnsafe.user;
+      const uuid = webApp.initDataUnsafe.start_param;
+
+      const postData = {
+        uuid: uuid,
+        id: user.id,
+        first_name: user.first_name,
+        last_name: user.last_name || '',
+        username: user.username || '',
+      };
+
+      try {
+        const response = await axios.post(
+          'https://urlencrypterbot-production.up.railway.app/api/resolve',
+          postData,
+          { headers: { 'Content-Type': 'application/json' } }
+        );
+
+        if (response.data && response.data.originalLink) {
+          const { originalLink } = response.data;
+
+          // Handle redirection based on the device type
+          if (/android/i.test(userAgent)) {
+            window.location.href = originalLink;
+          } else {
+            webApp.openTelegramLink(originalLink);
+          }
+          webApp.close();
+        } else {
+          document.getElementById("error").innerText = "Invalid response from server.";
+        }
+      } catch (err) {
+        document.getElementById("error").innerText = "Failed to redirect. Please try again later.";
+      }
+    });
+  </script>
+</body>
+</html>
